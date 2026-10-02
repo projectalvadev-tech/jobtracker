@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 15, unit: 'MINUTES')   // si se cuelga, se cancela solo
+        disableConcurrentBuilds()            // una ejecución a la vez
+    }
+
+    environment {
+        IMAGE_NAME = 'jobtracker'
+    }
+
+    stages {
+        stage('Instalar dependencias') {
+            steps {
+                sh '''
+                    python3 -m venv .venv
+                    .venv/bin/pip install --quiet -r requirements-dev.txt
+                '''
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                sh '.venv/bin/ruff check .'
+            }
+        }
+
+        stage('Tests') {
+            steps {
+                sh '.venv/bin/pytest --cov=app --junitxml=test-results.xml'
+            }
+            post {
+                always {
+                    junit 'test-results.xml'   // muestra los resultados en Jenkins
+                }
+            }
+        }
+
+        stage('Build imagen Docker') {
+            steps {
+                sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -t ${IMAGE_NAME}:latest .'
+            }
+        }
+
+        stage('Smoke test') {
+            steps {
+                sh '''
+                    docker run -d --name jt-smoke-${BUILD_NUMBER} \
+                        -e DATABASE_URL=sqlite:////tmp/smoke.db \
+                        ${IMAGE_NAME}:${BUILD_NUMBER}
+
+                    for i in $(seq 1 15); do
+                        if docker exec jt-smoke-${BUILD_NUMBER} python -c \
+                            "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"; then
+                            echo "Smoke test OK"
+                            exit 0
+                        fi
+                        sleep 2
+                    done
+
+                    echo "La app no respondio en /health"
+                    docker logs jt-smoke-${BUILD_NUMBER}
+                    exit 1
+                '''
+            }
+            post {
+                always {
+                    sh 'docker rm -f jt-smoke-${BUILD_NUMBER} || true'
+                }
+            }
+        }
+    }
+
+    post {
+        success { echo 'Pipeline OK: la imagen esta lista.' }
+        failure { echo 'Pipeline FALLO: revisa la etapa en rojo.' }
+    }
+}
