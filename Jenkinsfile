@@ -43,6 +43,28 @@ pipeline {
             }
         }
 
+        stage('Escaneo de seguridad (Trivy)') {
+            steps {
+                sh '''
+                    # 1) Reporte informativo: muestra vulnerabilidades HIGH y CRITICAL
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v trivy-cache:/root/.cache/ \
+                        aquasec/trivy:latest image --no-progress \
+                        --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 \
+                        ${IMAGE_NAME}:${BUILD_NUMBER}
+
+                    # 2) Puerta de calidad: falla si hay CRITICAL con arreglo disponible
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v trivy-cache:/root/.cache/ \
+                        aquasec/trivy:latest image --no-progress \
+                        --severity CRITICAL --ignore-unfixed --exit-code 1 \
+                        ${IMAGE_NAME}:${BUILD_NUMBER}
+                '''
+            }
+        }
+
         stage('Smoke test') {
             steps {
                 sh '''

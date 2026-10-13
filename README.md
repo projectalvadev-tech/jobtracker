@@ -12,7 +12,7 @@ Docker, CI/CD (Jenkins), IaC (Terraform), Kubernetes, cloud (AWS) y observabilid
 | Tests y calidad | pytest, ruff | ✅ Fase 1 |
 | Contenedores | Docker multi-stage, docker compose | ✅ Fase 1 |
 | CI/CD | Jenkins + GitHub Actions | ✅ Fase 2 |
-| Seguridad | SonarQube, Trivy | ⏳ Fase 3 |
+| Seguridad | Trivy ✅ · SonarQube ⏳ | 🔄 Fase 3 |
 | IaC / Cloud | Terraform, AWS | ⏳ Fase 4 |
 | Orquestación | Kubernetes, Helm | ⏳ Fase 5 |
 | Observabilidad | Prometheus, Grafana | ⏳ Fase 6 |

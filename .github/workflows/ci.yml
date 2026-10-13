@@ -28,3 +28,10 @@ jobs:
 
       - name: Build imagen Docker
         run: docker build -t jobtracker:${{ github.sha }} .
+
+      - name: Escaneo de seguridad (Trivy)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image --no-progress \
+            --severity CRITICAL --ignore-unfixed --exit-code 1 \
+            jobtracker:${{ github.sha }}
