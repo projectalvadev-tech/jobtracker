@@ -9,3 +9,4 @@ coverage.xml
 .env
 .terraform/
 *.tfstate*
+.scannerwork/

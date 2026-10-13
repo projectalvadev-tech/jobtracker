@@ -28,11 +28,37 @@ pipeline {
 
         stage('Tests') {
             steps {
-                sh '.venv/bin/pytest --cov=app --junitxml=test-results.xml'
+                sh '.venv/bin/pytest --cov=app --cov-report=term --cov-report=xml:coverage.xml --junitxml=test-results.xml'
             }
             post {
                 always {
                     junit 'test-results.xml'   // muestra los resultados en Jenkins
+                }
+            }
+        }
+
+        stage('Analisis SonarQube') {
+            when {
+                expression {
+                    // Solo corre si el contenedor de SonarQube esta encendido
+                    return sh(
+                        returnStatus: true,
+                        script: 'docker ps --filter name=^sonarqube$ --filter status=running -q | grep -q .'
+                    ) == 0
+                }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        docker run --rm -u root \
+                            --volumes-from jenkins \
+                            --network jenkins_default \
+                            -w "$WORKSPACE" \
+                            -e SONAR_HOST_URL=http://sonarqube:9000 \
+                            -e SONAR_TOKEN \
+                            sonarsource/sonar-scanner-cli:latest \
+                            -Dsonar.qualitygate.wait=false
+                    '''
                 }
             }
         }
